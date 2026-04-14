@@ -271,7 +271,7 @@
                         reverseButtons: true // Membalik posisi tombol
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            form.submit(); // Submit jika user klik 'Ya'
+                            form.submit(); 
                         }
                     });
                 });
