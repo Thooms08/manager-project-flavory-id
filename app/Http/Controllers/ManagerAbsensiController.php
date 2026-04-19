@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Karyawan, AbsensiKaryawan, Manager};
+use App\Models\{Karyawan, AbsensiKaryawan, Manager, PengaturanAbsensi};
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -22,6 +22,12 @@ class ManagerAbsensiController extends Controller
         $daysInMonth = Carbon::create($tahun, $bulan)->daysInMonth;
         
         $managerId = $this->getManagerId();
+
+        // Ambil Pengaturan Toggle Kamera (Jika belum ada di DB, otomatis terbuat dan ON)
+        $pengaturan = PengaturanAbsensi::firstOrCreate(
+            ['manager_id' => $managerId],
+            ['kamera_absen' => true, 'kamera_izin' => true]
+        );
 
         // 1. Eager Load Data Karyawan, User, dan Jadwal di bulan terpilih
         $karyawans = Karyawan::with(['user', 'memberShifts.jadwals' => function($q) use ($bulan, $tahun) {
@@ -46,7 +52,7 @@ class ManagerAbsensiController extends Controller
 
             // Inisialisasi grid bulan
             for ($i = 1; $i <= $daysInMonth; $i++) {
-                $cal[$i] = ['status' => 'kosong', 'ket' => ''];
+                $cal[$i] = ['status' => 'kosong', 'ket' => '', 'foto' => null];
             }
 
             // Mapping jadwal ke grid
@@ -54,7 +60,7 @@ class ManagerAbsensiController extends Controller
                 foreach ($member->jadwals as $jadwal) {
                     if ($jadwal->tgl_libur) {
                         $day = (int) date('d', strtotime($jadwal->tgl_libur));
-                        $cal[$day] = ['status' => 'libur', 'ket' => ''];
+                        $cal[$day] = ['status' => 'libur', 'ket' => '', 'foto' => null];
                         $totals['libur']++;
                     } elseif ($jadwal->tgl_masuk) {
                         $day = (int) date('d', strtotime($jadwal->tgl_masuk));
@@ -71,16 +77,17 @@ class ManagerAbsensiController extends Controller
 
                             $cal[$day] = [
                                 'status' => $record->status, 
-                                'ket' => $keteranganTampil // Sekarang berisi jam jika hadir
+                                'ket' => $keteranganTampil,
+                                'foto' => $record->foto ?? null // Menambahkan foto ke respon
                             ];
                             $totals[$record->status]++;
                         } else {
                             // Jika jadwal masuk tapi belum ada data absen (dan tanggal sudah lewat), bisa kita set Mangkir
                             if (Carbon::parse($jadwal->tgl_masuk)->isPast()) {
-                                $cal[$day] = ['status' => 'mangkir', 'ket' => 'Tidak ada data masuk'];
+                                $cal[$day] = ['status' => 'mangkir', 'ket' => 'Tidak ada data masuk', 'foto' => null];
                                 $totals['mangkir']++;
                             } else {
-                                $cal[$day] = ['status' => 'belum', 'ket' => '']; // Hari mendatang
+                                $cal[$day] = ['status' => 'belum', 'ket' => '', 'foto' => null]; // Hari mendatang
                             }
                         }
                     }
@@ -105,6 +112,33 @@ class ManagerAbsensiController extends Controller
             return Excel::download(new AbsensiExport($dataAbsensi, $bulan, $tahun, $daysInMonth), $fileName);
         }
 
-        return view('manager.absensi-karyawan', compact('dataAbsensi', 'bulan', 'tahun', 'daysInMonth'));
+        return view('manager.absensi-karyawan', compact('dataAbsensi', 'bulan', 'tahun', 'daysInMonth', 'pengaturan'));
+    }
+
+    /**
+     * AJAX Method untuk memperbarui status toggle kamera
+     */
+    public function updateToggle(Request $request)
+    {
+        $request->validate([
+            'jenis' => 'required|in:absen,izin',
+            'status' => 'required|boolean'
+        ]);
+
+        $managerId = $this->getManagerId();
+        $pengaturan = PengaturanAbsensi::where('manager_id', $managerId)->first();
+
+        if ($request->jenis == 'absen') {
+            $pengaturan->kamera_absen = $request->status;
+        } else {
+            $pengaturan->kamera_izin = $request->status;
+        }
+
+        $pengaturan->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengaturan Kamera ' . ucfirst($request->jenis) . ' berhasil di' . ($request->status ? 'aktifkan' : 'matikan') . '.'
+        ]);
     }
 }

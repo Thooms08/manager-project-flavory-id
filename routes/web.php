@@ -66,6 +66,7 @@ Route::middleware(['auth', 'role:manager'])->group(function () {
     });
     Route::prefix('manager/absensi')->name('manager.absensi.')->group(function () {
         Route::get('/', [ManagerAbsensiController::class, 'index'])->name('index');
+        Route::post('/toggle-kamera', [ManagerAbsensiController::class, 'updateToggle'])->name('toggle');
     });
     Route::post('/manager/generate-key', [ManagerController::class, 'generateKey'])->name('manager.generate_key');
     Route::prefix('manager/profile')->name('manager.profile.')->group(function () {

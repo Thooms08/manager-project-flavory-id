@@ -101,7 +101,7 @@
             display: inline-flex; align-items: center; justify-content: center; gap: 8px;
         }
         
-        .btn-modern:active { transform: scale(0.97); } /* Click feedback */
+        .btn-modern:active { transform: scale(0.97); }
 
         .btn-primary-custom {
             background: var(--brand-primary);
@@ -132,7 +132,6 @@
             transform: translateY(-2px);
         }
 
-        /* Animation for active absent button */
         @keyframes pulse-orange {
             0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
             70% { box-shadow: 0 0 0 15px rgba(249, 115, 22, 0); }
@@ -150,7 +149,7 @@
         .badge-inactive { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .badge-info { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
 
-        /* === CALENDAR GRID === */
+        /* === CALENDAR === */
         .calendar-grid {
             display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;
         }
@@ -164,10 +163,9 @@
         .day-work { background-color: var(--brand-light); color: var(--brand-primary); }
         .day-off { background-color: #fee2e2; color: #dc2626; }
         .day-empty { background-color: #f8fafc; color: #94a3b8; border: 1px dashed #e2e8f0; }
-        
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
 
-        /* === TOAST NOTIFICATION === */
+        /* === TOAST === */
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 1060; }
         .custom-toast {
             min-width: 300px; border-radius: 12px; border: none;
@@ -178,20 +176,38 @@
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-        .btn-tutor {
-            background-color: transparent;
-            color: var(--text-dark);
-            border: 1px solid rgba(43, 52, 64, 0.15);
-            border-radius: 8px;
-            font-weight: 500;
-            transition: all 0.2s;
-            text-decoration: none;
+
+        /* === CAMERA STYLES === */
+        .camera-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 4/3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .btn-tutor:hover {
-            background-color: #f8f9fa;
-            color: var(--orange-primary);
-            border-color: rgba(253, 126, 20, 0.3);
+        .camera-video, .camera-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
+        .btn-switch-cam {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            z-index: 10;
+            border-radius: 50%;
+            width: 45px; height: 45px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(4px);
+        }
+        .btn-switch-cam:hover { background: rgba(0,0,0,0.8); color: white; }
     </style>
 </head>
 <body>
@@ -306,14 +322,14 @@
                                 
                                 <div class="row text-center g-3">
                                     <div class="col-6 position-relative">
-                                        <div class="text-muted small mb-1 fw-medium">Jam Masuk</div>
+                                        <div class="text-muted small mb-1 fw-medium">Mulai Absen</div>
                                         <div class="fs-3 fw-bold text-main">
                                             {{ $jadwalHariIni->jam_masuk ? \Carbon\Carbon::parse($jadwalHariIni->jam_masuk)->format('H:i') : '--:--' }}
                                         </div>
                                         <div class="position-absolute top-50 end-0 translate-middle-y" style="width: 1px; height: 70%; background-color: #cbd5e1;"></div>
                                     </div>
                                     <div class="col-6">
-                                        <div class="text-muted small mb-1 fw-medium">Jam Keluar</div>
+                                        <div class="text-muted small mb-1 fw-medium">Batas Absen</div>
                                         <div class="fs-3 fw-bold text-main">
                                             {{ $jadwalHariIni->jam_keluar ? \Carbon\Carbon::parse($jadwalHariIni->jam_keluar)->format('H:i') : '--:--' }}
                                         </div>
@@ -330,11 +346,9 @@
                                     <p class="mb-0 small opacity-75">Status absensi Anda: <strong>{{ strtoupper($absensiHariIni->status) }}</strong></p>
                                 </div>
                             @else
-                                <form action="{{ route('karyawan.absen.store') }}" method="POST" class="mx-auto" style="max-width: 400px;">
-                                    @csrf
-                                    <input type="hidden" name="jadwal_id" value="{{ $jadwalHariIni->id }}">
-                                    
-                                    <button type="submit" class="btn-modern btn-primary-custom w-100 py-3 fs-5 {{ $isBisaAbsen ? 'btn-pulse' : '' }}" {{ $isBisaAbsen ? '' : 'disabled' }}>
+                                <div class="mx-auto" style="max-width: 400px;">
+                                    <button type="button" class="btn-modern btn-primary-custom w-100 py-3 fs-5 {{ $isBisaAbsen ? 'btn-pulse' : '' }}" 
+                                        @if($isBisaAbsen) data-bs-toggle="modal" data-bs-target="#modalAbsen" @else disabled @endif>
                                         <i class="bi bi-fingerprint fs-3"></i>
                                         <span>Catat Kehadiran</span>
                                     </button>
@@ -348,7 +362,7 @@
                                             <i class="bi bi-geo-alt-fill"></i> Pastikan Anda berada di lokasi outlet
                                         </div>
                                     @endif
-                                </form>
+                                </div>
                             @endif
 
                         @else
@@ -371,7 +385,7 @@
                     <div class="row g-3 mx-auto" style="max-width: 400px;">
                         <div class="col-6">
                             <button type="button" class="btn-modern btn-outline-custom w-100" data-bs-toggle="modal" data-bs-target="#modalJadwal">
-                                <i class="bi bi-calendar-week fs-5 text-primary"></i>
+                                <i class="bi bi-calendar-week fs-5 text-dark"></i>
                                 <span class="small">Jadwal Shift</span>
                             </button>
                         </div>
@@ -432,7 +446,7 @@
 
                     <div id="detail-jadwal" class="mt-4 p-3 rounded-4 bg-light border d-none" style="transition: all 0.3s ease;">
                         <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-secondary-subtle">
-                            <h6 class="fw-bold mb-0 text-main"><i class="bi bi-info-circle text-primary me-2"></i>Detail Tanggal <span id="detail-tgl-number" class="text-primary"></span></h6>
+                            <h6 class="fw-bold mb-0 text-main"><i class="bi bi-info-circle text-warning me-2"></i>Detail Tanggal <span id="detail-tgl-number" class="text-warning"></span></h6>
                             <span id="detail-tgl-full" class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"></span>
                         </div>
                         <div id="detail-content" class="pt-1"></div>
@@ -442,23 +456,109 @@
         </div>
     </div>
 
-    @if($adaJadwal && !$absensiHariIni)
-    <div class="modal fade" id="modalIzin" tabindex="-1" aria-labelledby="modalIzinLabel" aria-hidden="true">
+    @if($adaJadwal && !$absensiHariIni && $isBisaAbsen)
+    <div class="modal fade" id="modalAbsen" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content card-custom border-0">
-                <form action="{{ route('karyawan.izin.store') }}" method="POST">
+                <form action="{{ route('karyawan.absen.store') }}" method="POST" id="formAbsen">
                     @csrf
                     <input type="hidden" name="jadwal_id" value="{{ $jadwalHariIni->id }}">
+                    <input type="hidden" name="foto" id="inputFotoAbsen" required>
+                    
+                    <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-main"><i class="bi bi-camera text-primary me-2"></i> Foto Bukti Hadir</h5>
+                        <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal" aria-label="Close" onclick="stopCamera()"></button>
+                    </div>
+                    
+                    <div class="modal-body p-4 text-center">
+                        @if($pengaturan->kamera_absen)
+                        <div id="camErrorAbsen" class="alert alert-danger d-none small"></div>
+                        
+                        <div class="camera-container mb-3 shadow-sm border">
+                            <video id="videoAbsen" class="camera-video" autoplay playsinline></video>
+                            <img id="previewAbsen" class="camera-preview d-none" alt="Preview Absen">
+                            <button type="button" id="btnSwitchAbsen" class="btn btn-switch-cam" onclick="switchCamera('Absen')">
+                                <i class="bi bi-arrow-repeat fs-5"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button type="button" id="btnPotretAbsen" class="btn btn-primary-custom rounded-pill px-4 fw-medium" onclick="takeSnapshot('Absen')">
+                                <i class="bi bi-camera-fill me-1"></i> Potret
+                            </button>
+                            <button type="button" id="btnUlangAbsen" class="btn btn-outline-secondary rounded-pill px-4 fw-medium d-none" onclick="retake('Absen')">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Ulang
+                            </button>
+                        </div>
+                        @else
+                            <div class="alert alert-warning border-0 rounded-4 d-flex gap-3 align-items-start text-start mb-0">
+                                <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
+                                <div class="small fw-medium">
+                                    Fitur wajib foto sedang dinonaktifkan oleh Manager. Anda bisa langsung mencatat kehadiran.
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                    
+                    
+                   <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
+                        <button type="button" class="btn-modern btn-outline-custom px-4" data-bs-dismiss="modal" onclick="stopCamera()">Batal</button>
+                        <button type="submit" id="btnKirimAbsen" class="btn-modern btn-primary-custom px-4" onclick="showLoading(this)" @if($pengaturan->kamera_absen) disabled @endif>Kirim Absen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    @if($adaJadwal && !$absensiHariIni)
+    <div class="modal fade" id="modalIzin" data-bs-backdrop="static" tabindex="-1" aria-labelledby="modalIzinLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content card-custom border-0">
+                <form action="{{ route('karyawan.izin.store') }}" method="POST" id="formIzin">
+                    @csrf
+                    <input type="hidden" name="jadwal_id" value="{{ $jadwalHariIni->id }}">
+                    <input type="hidden" name="foto" id="inputFotoIzin" required>
                     
                     <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 d-flex justify-content-between align-items-center">
                         <h5 class="fw-bold mb-0 text-main"><i class="bi bi-envelope-paper text-warning me-2"></i> Pengajuan Izin</h5>
-                        <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal" aria-label="Close" onclick="stopCamera()"></button>
                     </div>
                     
                     <div class="modal-body p-4">
+                        @if($pengaturan->kamera_izin)
+                            <div class="mb-3 text-center">
+                                <label class="form-label fw-semibold text-main mb-2">Foto Bukti Izin / Surat Dokter <span class="text-danger">*</span></label>
+                                <div id="camErrorIzin" class="alert alert-danger d-none small"></div>
+                                
+                                <div class="camera-container mb-3 shadow-sm border">
+                                    <video id="videoIzin" class="camera-video" autoplay playsinline></video>
+                                    <img id="previewIzin" class="camera-preview d-none" alt="Preview Izin">
+                                    <button type="button" id="btnSwitchIzin" class="btn btn-switch-cam" onclick="switchCamera('Izin')">
+                                        <i class="bi bi-arrow-repeat fs-5"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="d-flex justify-content-center gap-2">
+                                    <button type="button" id="btnPotretIzin" class="btn btn-primary-custom rounded-pill px-4 fw-medium" onclick="takeSnapshot('Izin')">
+                                        <i class="bi bi-camera-fill me-1"></i> Potret
+                                    </button>
+                                    <button type="button" id="btnUlangIzin" class="btn btn-outline-secondary rounded-pill px-4 fw-medium d-none" onclick="retake('Izin')">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Ulang
+                                    </button>
+                                </div>
+                            </div> @else
+                            <div class="alert alert-warning border-0 rounded-4 d-flex gap-3 align-items-start text-start mb-4">
+                                <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
+                                <div class="small fw-medium">
+                                    Fitur wajib foto sedang dinonaktifkan oleh Manager. Anda bisa langsung mengajukan izin.
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="mb-4">
                             <label for="keterangan" class="form-label fw-semibold text-main">Alasan / Keterangan <span class="text-danger">*</span></label>
-                            <textarea class="form-control bg-light border-0 p-3" id="keterangan" name="keterangan" rows="4" style="border-radius: 12px; resize: none;" placeholder="Contoh: Sakit demam (surat dokter menyusul)..." required></textarea>
+                            <textarea class="form-control bg-light border-0 p-3" id="keterangan" name="keterangan" rows="3" style="border-radius: 12px; resize: none;" placeholder="Contoh: Sakit demam..." required></textarea>
                         </div>
                         
                         <div class="alert alert-warning border-0 rounded-4 d-flex gap-3 align-items-start mb-0">
@@ -470,8 +570,8 @@
                     </div>
                     
                     <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
-                        <button type="button" class="btn-modern btn-outline-custom px-4" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn-modern btn-primary-custom px-4">Kirim Pengajuan</button>
+                        <button type="button" class="btn-modern btn-outline-custom px-4" data-bs-dismiss="modal" onclick="stopCamera()">Batal</button>
+                        <button type="submit" id="btnKirimIzin" class="btn-modern btn-primary-custom px-4" onclick="showLoading(this)" @if($pengaturan->kamera_izin) disabled @endif>Kirim Pengajuan</button>
                     </div>
                 </form>
             </div>
@@ -499,6 +599,27 @@
                 const toast = new bootstrap.Toast(toastNode, { delay: 5000 });
                 toast.show();
             });
+
+            // CAMERA EVENT LISTENERS
+            // CAMERA EVENT LISTENERS
+            const isKameraAbsenAktif = {{ $pengaturan->kamera_absen ? 'true' : 'false' }};
+            const isKameraIzinAktif = {{ $pengaturan->kamera_izin ? 'true' : 'false' }};
+
+            const modalAbsenEl = document.getElementById('modalAbsen');
+            if(modalAbsenEl) {
+                modalAbsenEl.addEventListener('shown.bs.modal', () => {
+                    if (isKameraAbsenAktif) startCamera('Absen');
+                });
+                modalAbsenEl.addEventListener('hidden.bs.modal', () => stopCamera());
+            }
+
+            const modalIzinEl = document.getElementById('modalIzin');
+            if(modalIzinEl) {
+                modalIzinEl.addEventListener('shown.bs.modal', () => {
+                    if (isKameraIzinAktif) startCamera('Izin');
+                });
+                modalIzinEl.addEventListener('hidden.bs.modal', () => stopCamera());
+            }
         });
 
         // 3. Calendar Detail Logic
@@ -508,16 +629,13 @@
             const titleFull = document.getElementById('detail-tgl-full');
             const content = document.getElementById('detail-content');
             
-            // Get data from clicked element
             const dayElement = event.currentTarget;
             const info = JSON.parse(dayElement.getAttribute('data-info'));
 
-            // UI Reset & Show
             detailBox.classList.remove('d-none');
             titleNum.innerText = dayNum;
             titleFull.innerText = dateStr;
 
-            // Render Content
             if (info === null) {
                 content.innerHTML = `
                     <div class="text-center py-2 text-muted">
@@ -555,6 +673,151 @@
                         </div>
                     </div>
                 `;
+            }
+        }
+
+        // ==========================================
+        // CAMERA & COMPRESSION LOGIC
+        // ==========================================
+        let currentStream = null;
+        let currentFacingMode = 'user'; // default kamera depan
+
+        async function startCamera(type) {
+            const video = document.getElementById(`video${type}`);
+            const errorBox = document.getElementById(`camError${type}`);
+            
+            try {
+                if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); }
+                
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: currentFacingMode },
+                    audio: false
+                });
+                
+                video.srcObject = currentStream;
+                errorBox.classList.add('d-none');
+            } catch (err) {
+                console.error("Camera Error: ", err);
+                errorBox.classList.remove('d-none');
+                errorBox.innerText = "Gagal mengakses kamera. Mohon izinkan akses kamera di browser Anda.";
+            }
+        }
+
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+        }
+
+        function switchCamera(type) {
+            currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+            startCamera(type);
+        }
+
+        function takeSnapshot(type) {
+            const video = document.getElementById(`video${type}`);
+            const preview = document.getElementById(`preview${type}`);
+            const inputFoto = document.getElementById(`inputFoto${type}`);
+            const btnPotret = document.getElementById(`btnPotret${type}`);
+            const btnUlang = document.getElementById(`btnUlang${type}`);
+            const btnKirim = document.getElementById(`btnKirim${type}`);
+            const btnSwitch = document.getElementById(`btnSwitch${type}`);
+
+            compressImage(video, function(compressedDataUrl) {
+                // Set UI
+                preview.src = compressedDataUrl;
+                inputFoto.value = compressedDataUrl; // Set Hidden Input base64
+                
+                video.classList.add('d-none');
+                btnSwitch.classList.add('d-none');
+                preview.classList.remove('d-none');
+                
+                btnPotret.classList.add('d-none');
+                btnUlang.classList.remove('d-none');
+                btnKirim.disabled = false;
+                
+                stopCamera();
+            });
+        }
+
+        function retake(type) {
+            const video = document.getElementById(`video${type}`);
+            const preview = document.getElementById(`preview${type}`);
+            const inputFoto = document.getElementById(`inputFoto${type}`);
+            const btnPotret = document.getElementById(`btnPotret${type}`);
+            const btnUlang = document.getElementById(`btnUlang${type}`);
+            const btnKirim = document.getElementById(`btnKirim${type}`);
+            const btnSwitch = document.getElementById(`btnSwitch${type}`);
+
+            video.classList.remove('d-none');
+            btnSwitch.classList.remove('d-none');
+            preview.classList.add('d-none');
+            inputFoto.value = '';
+            
+            btnPotret.classList.remove('d-none');
+            btnUlang.classList.add('d-none');
+            btnKirim.disabled = true;
+
+            startCamera(type);
+        }
+
+        function compressImage(video, callback) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Limit resolusi untuk memudahkan pencapaian 80-100KB
+            const maxWidth = 640; 
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+            
+            if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(video, 0, 0, width, height);
+            
+            let minQ = 0.1, maxQ = 0.9, q = 0.7;
+            let targetMinKB = 80, targetMaxKB = 100;
+            let bestDataUrl = canvas.toDataURL('image/jpeg', q);
+            
+            // Algoritma Binary Search Sederhana untuk mendapatkan size antara 80-100KB
+            // Max loop 6 kali agar tidak bikin nge-hang browser
+            for (let i = 0; i < 6; i++) {
+                let dataUrl = canvas.toDataURL('image/jpeg', q);
+                let sizeKB = Math.round((dataUrl.length * 3) / 4) / 1024;
+                bestDataUrl = dataUrl;
+
+                if (sizeKB > targetMaxKB) {
+                    maxQ = q;
+                    q = (minQ + maxQ) / 2;
+                } else if (sizeKB < targetMinKB) {
+                    minQ = q;
+                    q = (minQ + maxQ) / 2;
+                } else {
+                    break; // Size sudah ideal (80 - 100 KB)
+                }
+            }
+            
+            callback(bestDataUrl);
+        }
+
+        // Form Submission UI
+       // Form Submission UI
+        function showLoading(btn) {
+            const form = btn.closest('form');
+            
+            // Cek apakah form sudah valid (semua input wajib sudah terisi)
+            if (form.checkValidity()) {
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memproses...';
+                btn.classList.add('disabled');
+                form.submit();
+            } else {
+                // Jika belum valid, biarkan browser memunculkan peringatan (tidak jadi loading)
+                form.reportValidity();
             }
         }
     </script>
